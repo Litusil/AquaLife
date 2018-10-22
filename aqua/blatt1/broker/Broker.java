@@ -2,10 +2,7 @@ package aqua.blatt1.broker;
 
 import aqua.blatt1.common.Direction;
 import aqua.blatt1.common.FishModel;
-import aqua.blatt1.common.msgtypes.DeregisterRequest;
-import aqua.blatt1.common.msgtypes.HandoffRequest;
-import aqua.blatt1.common.msgtypes.RegisterRequest;
-import aqua.blatt1.common.msgtypes.RegisterResponse;
+import aqua.blatt1.common.msgtypes.*;
 import messaging.Endpoint;
 import messaging.Message;
 
@@ -25,7 +22,6 @@ public class Broker {
     private  volatile boolean stopRequest = false;
 
     private class StopRequest extends Thread{
-
         @Override
         public void run(){
             // Aufruf der statischen Methode showMessageDialog()
@@ -56,6 +52,10 @@ public class Broker {
             else if( message.getPayload() instanceof HandoffRequest)
             {
                 this.handoffFish(message);
+            }
+            else if( message.getPayload() instanceof PoisonPill)
+            {
+                stopRequest = true;
             }
         }
 
@@ -115,8 +115,6 @@ public class Broker {
 
    public void broker()
    {
-
-
        StopRequest sr = new StopRequest();
        sr.start();
        ExecutorService executor = Executors.newFixedThreadPool(5);
