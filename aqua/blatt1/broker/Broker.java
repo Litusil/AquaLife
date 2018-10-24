@@ -53,10 +53,7 @@ public class Broker {
             {
                 this.handoffFish(message);
             }
-            else if( message.getPayload() instanceof PoisonPill)
-            {
-                stopRequest = true;
-            }
+
         }
 
         private void register(Message message)
@@ -64,6 +61,13 @@ public class Broker {
             lock.readLock().lock();
             String id = "client" + clientList.size();
             lock.readLock().unlock();
+            if(clientList.size() == 0){
+                endpoint.send(message.getSender(),new NeighborUpdate(message.getSender(),message.getSender()));
+            } else {
+                clientList.size();
+                endpoint.send(message.getSender(),new NeighborUpdate(clientList.getClient(0),clientList.getClient(clientList.size() - 1)));
+                endpoint.send(clientList.getClient(clientList.size() - 1),new NeighborUpdate(message.getSender(),null));
+            }
             lock.writeLock().lock();
             clientList.add(id,message.getSender());
             lock.writeLock().unlock();
@@ -75,6 +79,12 @@ public class Broker {
             Serializable payload = message.getPayload();
             DeregisterRequest request = (DeregisterRequest)payload;
             lock.writeLock().lock();
+            if(clientList.size() == 2){
+                endpoint.send(clientList.getClient(0),new NeighborUpdate(clientList.getClient(0),clientList.getClient(0)));
+            } else if (clientList.size() > 2) {
+                endpoint.send(clientList.getLeftNeighorOf(clientList.indexOf(request.getId())),new NeighborUpdate(clientList.getRightNeighorOf(clientList.indexOf(request.getId())),null));
+                endpoint.send(clientList.getRightNeighorOf(clientList.indexOf(request.getId())),new NeighborUpdate(null,clientList.getLeftNeighorOf(clientList.indexOf(request.getId()))));
+            }
             clientList.remove(clientList.indexOf(request.getId()));
             lock.writeLock().unlock();
         }
@@ -121,10 +131,17 @@ public class Broker {
        while(!stopRequest)
        {
            Message message =  endpoint.blockingReceive();
+           if( message.getPayload() instanceof PoisonPill)
+            {
+                System.out.println("Goodbye!");
+                JOptionPane.getRootFrame().dispose();
+                break;
+            }
            Runnable worker = new BrokerTask(message);
            executor.execute(worker);
        }
        executor.shutdown();
+
    }
 
 
