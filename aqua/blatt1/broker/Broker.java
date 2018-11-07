@@ -1,7 +1,5 @@
 package aqua.blatt1.broker;
 
-import aqua.blatt1.common.Direction;
-import aqua.blatt1.common.FishModel;
 import aqua.blatt1.common.msgtypes.*;
 import messaging.Endpoint;
 import messaging.Message;
@@ -49,11 +47,6 @@ public class Broker {
             {
                 this.deregister(message);
             }
-            else if( message.getPayload() instanceof HandoffRequest)
-            {
-                this.handoffFish(message);
-            }
-
         }
 
         private void register(Message message)
@@ -67,6 +60,7 @@ public class Broker {
                 clientList.size();
                 endpoint.send(message.getSender(),new NeighborUpdate(clientList.getClient(0),clientList.getClient(clientList.size() - 1)));
                 endpoint.send(clientList.getClient(clientList.size() - 1),new NeighborUpdate(message.getSender(),null));
+                endpoint.send(clientList.getClient(0),new NeighborUpdate(null,message.getSender()));
             }
             lock.writeLock().lock();
             clientList.add(id,message.getSender());
@@ -87,38 +81,6 @@ public class Broker {
             }
             clientList.remove(clientList.indexOf(request.getId()));
             lock.writeLock().unlock();
-        }
-
-        private void handoffFish (Message message)
-        {
-            lock.readLock().lock();
-            int sourceindex = clientList.indexOf(message.getSender());
-            Serializable payload = message.getPayload();
-            HandoffRequest request = (HandoffRequest)payload;
-            FishModel fish = request.getFish();
-            if(fish.getDirection()== Direction.RIGHT)
-            {
-                if (sourceindex == clientList.size()- 1)
-                {
-                    endpoint.send(clientList.getClient(0), message.getPayload());
-                }
-                else
-                {
-                    endpoint.send(clientList.getClient(sourceindex + 1), message.getPayload());
-                }
-            }
-            else if (fish.getDirection() == Direction.LEFT)
-            {
-                if(sourceindex == 0)
-                {
-                    endpoint.send(clientList.getClient(clientList.size() - 1),message.getPayload());
-                }
-                else
-                {
-                    endpoint.send(clientList.getClient(sourceindex - 1), message.getPayload());
-                }
-            }
-            lock.readLock().unlock();
         }
 
     }

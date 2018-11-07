@@ -31,12 +31,8 @@ public class ClientCommunicator {
 			endpoint.send(broker, new DeregisterRequest(id));
 		}
 
-		public void handOff(FishModel fish) {
-
-
-			if(fish.getDirection() == Direction.LEFT){
-				endpoint.send(, new HandoffRequest(fish));
-			}
+		public void handOff(FishModel fish, InetSocketAddress adr) {
+				endpoint.send(adr, new HandoffRequest(fish));
 		}
 	}
 
@@ -65,7 +61,7 @@ public class ClientCommunicator {
 						tankModel.setLeftNeighbor(left);
 					}
 					if(right != null){
-						tankModel.setLeftNeighbor(right);
+						tankModel.setRightNeighbor(right);
 					}
 				}
 			}

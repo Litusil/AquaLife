@@ -80,8 +80,13 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 			fish.update();
 
 			if (fish.hitsEdge())
-				forwarder.handOff(fish);
-
+				if(fish.getDirection() == Direction.LEFT) {
+					forwarder.handOff(fish,leftNeighbor);
+				}
+				else if(fish.getDirection() == Direction.RIGHT)
+				{
+					forwarder.handOff(fish,rightNeighbor);
+				}
 			if (fish.disappears())
 				it.remove();
 		}
