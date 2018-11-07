@@ -56,6 +56,7 @@ public class Broker {
             lock.readLock().unlock();
             if(clientList.size() == 0){
                 endpoint.send(message.getSender(),new NeighborUpdate(message.getSender(),message.getSender()));
+                endpoint.send(message.getSender(),new Token());
             } else {
                 clientList.size();
                 endpoint.send(message.getSender(),new NeighborUpdate(clientList.getClient(0),clientList.getClient(clientList.size() - 1)));

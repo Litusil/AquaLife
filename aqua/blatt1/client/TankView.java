@@ -62,6 +62,10 @@ public class TankView extends JPanel implements Observer {
 	public void paintComponent(Graphics g) {
 		super.paintComponent(g);
 		doDrawing(g);
+		if(!tankModel.hasToken.get()){
+			Graphics2D g2d = (Graphics2D) g;
+			drawBorders(g2d);
+		}
 	}
 
 	@Override

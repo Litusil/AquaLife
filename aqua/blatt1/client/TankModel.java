@@ -8,6 +8,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import aqua.blatt1.common.Direction;
 import aqua.blatt1.common.FishModel;
@@ -22,6 +23,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	protected final Set<FishModel> fishies;
 	protected int fishCounter = 0;
 	protected final ClientCommunicator.ClientForwarder forwarder;
+	protected AtomicBoolean hasToken = new AtomicBoolean();
 
 	public void setLeftNeighbor(InetSocketAddress leftNeighbor) {
 		this.leftNeighbor = leftNeighbor;
@@ -56,6 +58,10 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 		}
 	}
 
+	public AtomicBoolean hasToken() {
+		return hasToken;
+	}
+
 	synchronized void receiveFish(FishModel fish) {
 		fish.setToStart();
 		fishies.add(fish);
@@ -80,12 +86,14 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 			fish.update();
 
 			if (fish.hitsEdge())
-				if(fish.getDirection() == Direction.LEFT) {
-					forwarder.handOff(fish,leftNeighbor);
-				}
-				else if(fish.getDirection() == Direction.RIGHT)
-				{
-					forwarder.handOff(fish,rightNeighbor);
+				if (hasToken.get()){
+					if (fish.getDirection() == Direction.LEFT) {
+						forwarder.handOff(fish, leftNeighbor);
+					} else if (fish.getDirection() == Direction.RIGHT) {
+						forwarder.handOff(fish, rightNeighbor);
+					}
+				} else {
+					fish.reverse();
 				}
 			if (fish.disappears())
 				it.remove();
@@ -96,6 +104,17 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 		updateFishies();
 		setChanged();
 		notifyObservers();
+	}
+	protected void setToken() {
+		hasToken.set(true);
+		new java.util.Timer().schedule(
+			new java.util.TimerTask() {
+			@Override
+			public void run() {
+				hasToken.set(false);
+				forwarder.Token(rightNeighbor);
+			}
+		}, 2000);
 	}
 
 	protected void run() {
@@ -112,6 +131,10 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	}
 
 	public synchronized void finish() {
+		if(hasToken.get())
+		{
+			forwarder.Token(rightNeighbor);
+		}
 		forwarder.deregister(id);
 	}
 
