@@ -1,17 +1,15 @@
 package aqua.blatt1.client;
 
 import java.net.InetSocketAddress;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.Observable;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import aqua.blatt1.common.Direction;
 import aqua.blatt1.common.FishModel;
+import aqua.blatt1.common.msgtypes.HandoffRequest;
+import messaging.Message;
 
 public class TankModel extends Observable implements Iterable<FishModel> {
 
@@ -23,7 +21,10 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	protected final Set<FishModel> fishies;
 	protected int fishCounter = 0;
 	protected final ClientCommunicator.ClientForwarder forwarder;
+	protected LinkedList<Message> snapshotStack = new LinkedList<>();
 	protected AtomicBoolean hasToken = new AtomicBoolean();
+    protected boolean isWatchingLeft = false;
+    protected boolean isWatchingRight = false;
 
 	public void setLeftNeighbor(InetSocketAddress leftNeighbor) {
 		this.leftNeighbor = leftNeighbor;
@@ -33,8 +34,8 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 		this.rightNeighbor = rightNeighbor;
 	}
 
-	private InetSocketAddress leftNeighbor = null;
-	private InetSocketAddress rightNeighbor = null;
+	protected InetSocketAddress leftNeighbor = null;
+	protected InetSocketAddress rightNeighbor = null;
 
 	public TankModel(ClientCommunicator.ClientForwarder forwarder) {
 		this.fishies = Collections.newSetFromMap(new ConcurrentHashMap<FishModel, Boolean>());
@@ -137,5 +138,17 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 		}
 		forwarder.deregister(id);
 	}
+
+    public void initiateSnapshot(InetSocketAddress sender) {
+
+
+	    if(sender != null){
+
+        }
+
+
+        forwarder.snapshotMarker(rightNeighbor, leftNeighbor);
+
+    }
 
 }
