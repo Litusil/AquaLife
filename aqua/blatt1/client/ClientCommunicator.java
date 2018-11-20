@@ -9,6 +9,8 @@ import messaging.Message;
 import aqua.blatt1.common.FishModel;
 import aqua.blatt1.common.Properties;
 
+import javax.swing.*;
+
 public class ClientCommunicator {
 	private final Endpoint endpoint;
 
@@ -39,8 +41,12 @@ public class ClientCommunicator {
 			endpoint.send(adr, new Token());
 		}
 		public void snapshotMarker(InetSocketAddress rightNeighbour, InetSocketAddress leftNeighbour) {
-
+			endpoint.send(rightNeighbour, new SnapshotMarker());
+			endpoint.send(leftNeighbour, new SnapshotMarker());
         }
+        public void snapshotToken (InetSocketAddress leftNeighbour, SnapshotToken snapshotToken){
+			endpoint.send(leftNeighbour, snapshotToken);
+		}
 	}
 
 	public class ClientReceiver extends Thread {
@@ -60,12 +66,6 @@ public class ClientCommunicator {
 
 				if (msg.getPayload() instanceof HandoffRequest)
 					tankModel.receiveFish(((HandoffRequest) msg.getPayload()).getFish());
-				    if((msg.getSender() == tankModel.leftNeighbor) && tankModel.isWatchingLeft){
-                        tankModel.snapshotStack.add(msg);
-                    }
-                    if((msg.getSender() == tankModel.rightNeighbor) && tankModel.isWatchingRight){
-                        tankModel.snapshotStack.add(msg);
-                    }
 				if (msg.getPayload() instanceof NeighborUpdate){
 					NeighborUpdate update = (NeighborUpdate) msg.getPayload();
 					InetSocketAddress left = update.getLeftNeighbor();
@@ -81,8 +81,17 @@ public class ClientCommunicator {
 					tankModel.setToken();
 				}
                 if (msg.getPayload() instanceof SnapshotMarker){
-                    tankModel.initiateSnapshot(msg.getSender());
+                    tankModel.initiateSnapshot(msg.getSender(), false);
                 }
+                if(msg.getPayload() instanceof  SnapshotToken){
+					if(tankModel.initiateToken){
+						SnapshotToken snapshotToken = (SnapshotToken) msg.getPayload();
+						JOptionPane.showMessageDialog(null, "Anzahl Fische: " + snapshotToken.getAmountOfFishies(),"Eine Nachricht",JOptionPane.INFORMATION_MESSAGE);
+					}else {
+						tankModel.snapshotToken = (SnapshotToken) msg.getPayload();
+
+					}
+				}
 			}
 			System.out.println("Receiver stopped.");
 		}

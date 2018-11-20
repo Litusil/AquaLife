@@ -8,8 +8,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import aqua.blatt1.common.Direction;
 import aqua.blatt1.common.FishModel;
-import aqua.blatt1.common.msgtypes.HandoffRequest;
+import aqua.blatt1.common.msgtypes.SnapshotToken;
+import com.sun.org.apache.regexp.internal.RE;
 import messaging.Message;
+
+enum RecordMode{
+	IDLE, LEFT, RIGHT,BOTH, WAITFORSNAPSHOTTOKEN;
+}
 
 public class TankModel extends Observable implements Iterable<FishModel> {
 
@@ -21,10 +26,13 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	protected final Set<FishModel> fishies;
 	protected int fishCounter = 0;
 	protected final ClientCommunicator.ClientForwarder forwarder;
-	protected LinkedList<Message> snapshotStack = new LinkedList<>();
 	protected AtomicBoolean hasToken = new AtomicBoolean();
-    protected boolean isWatchingLeft = false;
-    protected boolean isWatchingRight = false;
+	//snapshot
+	protected RecordMode mode = RecordMode.IDLE;
+	protected int localState = 0; //number of fishies
+	protected boolean initiateToken = false;
+	protected SnapshotToken snapshotToken = null;
+
 
 	public void setLeftNeighbor(InetSocketAddress leftNeighbor) {
 		this.leftNeighbor = leftNeighbor;
@@ -64,6 +72,15 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	}
 
 	synchronized void receiveFish(FishModel fish) {
+		if(mode == RecordMode.BOTH){
+			localState++;
+		}
+		if(mode == RecordMode.LEFT && fish.getDirection() == Direction.RIGHT){
+			localState++;
+		}
+		if(mode == RecordMode.RIGHT && fish.getDirection() == Direction.LEFT){
+			localState++;
+		}
 		fish.setToStart();
 		fishies.add(fish);
 	}
@@ -139,15 +156,58 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 		forwarder.deregister(id);
 	}
 
-    public void initiateSnapshot(InetSocketAddress sender) {
+    public void initiateSnapshot(InetSocketAddress sender, boolean initiateToken) {
+		if(this.initiateToken != true){
+			this.initiateToken = initiateToken;
+		}
+
+		if (mode == RecordMode.IDLE) {
+			if (sender == null) {
+				System.out.println("snapshot init");
+				mode = RecordMode.BOTH;
+				localState = fishCounter;
+				snapshotToken = new SnapshotToken();
+				forwarder.snapshotMarker(rightNeighbor, leftNeighbor);
+			}else {
+				if (sender.equals(rightNeighbor)) {
+					System.out.println("right neighbour send snapshotmarker");
+					mode = RecordMode.LEFT;
+					localState = fishCounter;
+					forwarder.snapshotMarker(rightNeighbor, leftNeighbor);
+				}
+				if (sender.equals(leftNeighbor)) {
+					System.out.println("left neighbour send snapshotmarker");
+					mode = RecordMode.RIGHT;
+					localState = fishCounter;
+					forwarder.snapshotMarker(rightNeighbor, leftNeighbor);
+				}
+			}
+		}
+		if (sender != null) {
 
 
-	    if(sender != null){
+			if (mode == RecordMode.BOTH && sender.equals(leftNeighbor)) {
+				mode = RecordMode.RIGHT;
+			}
+			if (mode == RecordMode.BOTH && sender.equals(rightNeighbor)) {
+				mode = RecordMode.LEFT;
+			}
 
-        }
-
-
-        forwarder.snapshotMarker(rightNeighbor, leftNeighbor);
+			if (mode == RecordMode.LEFT && sender.equals(leftNeighbor)) {
+				System.out.println("Gezählte Fische: " + localState);
+				mode = RecordMode.WAITFORSNAPSHOTTOKEN;
+				snapshotToken.addFishies(localState);
+				forwarder.snapshotToken(leftNeighbor, snapshotToken);
+				//snapshot done
+			}
+			if (mode == RecordMode.RIGHT && sender.equals(rightNeighbor)) {
+				System.out.println("Gezählte Fische: " + localState);
+				mode = RecordMode.WAITFORSNAPSHOTTOKEN;
+				snapshotToken.addFishies(localState);
+				forwarder.snapshotToken(leftNeighbor, snapshotToken);
+				//snapshot done
+			}
+		}
 
     }
 

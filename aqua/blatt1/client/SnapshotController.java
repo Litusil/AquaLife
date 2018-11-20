@@ -17,6 +17,6 @@ public class SnapshotController implements ActionListener {
 	@Override
 	public void actionPerformed(ActionEvent e) {
 		//JOptionPane.showMessageDialog(parent, "Functionality not implemented yet.");
-		tankModel.initiateSnapshot(null);
+		tankModel.initiateSnapshot(null, true);
 	}
 }
