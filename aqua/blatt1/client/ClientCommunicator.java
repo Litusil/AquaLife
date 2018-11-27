@@ -47,8 +47,14 @@ public class ClientCommunicator {
         public void snapshotToken (InetSocketAddress leftNeighbour, SnapshotToken snapshotToken){
 			endpoint.send(leftNeighbour, snapshotToken);
 		}
-		public void sendLocationRequest(InetSocketAddress neighbour, String fishId){
-			endpoint.send(neighbour, new LocationRequest(fishId));
+		public void sendLocationRequest(InetSocketAddress destination, String fishId){
+			endpoint.send(destination, new LocationRequest(fishId));
+		}
+		public void sendNameResolutionRequest(String tankId, String requestId){
+			endpoint.send(broker, new NameResolutionRequest(tankId,requestId));
+		}
+		public void sendLocationUpdate (InetSocketAddress  source, String fishId){
+			endpoint.send(source, new LocationUpdate(fishId));
 		}
 	}
 
@@ -98,6 +104,14 @@ public class ClientCommunicator {
 				if(msg.getPayload() instanceof  LocationRequest){
 					LocationRequest lr = (LocationRequest) msg.getPayload();
 					tankModel.locateFishGlobally(lr.getFishId());
+				}
+				if(msg.getPayload() instanceof  NameResolutionResponse){
+					NameResolutionResponse n = (NameResolutionResponse) msg.getPayload();
+					tankModel.forwarder.sendLocationUpdate(n.getSource(), n.getRequestId());
+				}
+				if(msg.getPayload() instanceof  LocationUpdate){
+					LocationUpdate lu = (LocationUpdate) msg.getPayload();
+					tankModel.homeAgent.put(lu.getFishId(), msg.getSender());
 				}
 			}
 			System.out.println("Receiver stopped.");

@@ -37,7 +37,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	protected boolean initiateToken = false;
 	protected SnapshotToken snapshotToken = null;
 	//Namensdienste
-	protected ConcurrentHashMap<String, FishPosition> fishPosition = new ConcurrentHashMap<>();
+	protected HashMap<String, InetSocketAddress> homeAgent = new HashMap<>();
 
 
 	public void setLeftNeighbor(InetSocketAddress leftNeighbor) {
@@ -52,7 +52,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	protected InetSocketAddress rightNeighbor = null;
 
 	public TankModel(ClientCommunicator.ClientForwarder forwarder) {
-		this.fishies = Collections.newSetFromMap(new ConcurrentHashMap<FishModel, Boolean>());
+		this.fishies = Collections.newSetFromMap(new HashMap<FishModel, Boolean>());
 		this.forwarder = forwarder;
 	}
 
@@ -70,7 +70,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 					rand.nextBoolean() ? Direction.LEFT : Direction.RIGHT);
 
 			fishies.add(fish);
-			fishPosition.put(fish.getId(), FishPosition.HERE);
+			homeAgent.put(fish.getId(), null);
 		}
 	}
 
@@ -90,7 +90,12 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 		}
 		fish.setToStart();
 		fishies.add(fish);
-		fishPosition.put(fish.getId(), FishPosition.HERE);
+		if(homeAgent.containsKey(fish.getId())){
+		    homeAgent.put(fish.getId(),null);
+        } else {
+		    forwarder.sendNameResolutionRequest(fish.getTankId(), fish.getId());
+        }
+
 	}
 
 	public String getId() {
@@ -115,10 +120,8 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 				if (hasToken.get()){
 
 					if (fish.getDirection() == Direction.LEFT) {
-						fishPosition.put(fish.getId(), FishPosition.LEFT);
 						forwarder.handOff(fish, leftNeighbor);
 					} else if (fish.getDirection() == Direction.RIGHT) {
-						fishPosition.put(fish.getId(), FishPosition.RIGHT);
 						forwarder.handOff(fish, rightNeighbor);
 					}
 				} else {
@@ -222,18 +225,11 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 
     }
     public void locateFishGlobally (String fishId){
-		//if(fishPosition.containsKey(fishId)){
-		//}
-        System.out.println(fishPosition);
-        if(fishPosition.get(fishId).equals(FishPosition.HERE))
-        {
-            locateFishLocally(fishId);
-        }
-        if(fishPosition.get(fishId).equals(FishPosition.LEFT)){
-            forwarder.sendLocationRequest(leftNeighbor, fishId);
-        }
-        if(fishPosition.get(fishId).equals(FishPosition.RIGHT)){
-            forwarder.sendLocationRequest(rightNeighbor, fishId);
+
+	    if (homeAgent.get(fishId) == null){
+	        locateFishLocally(fishId);
+        }else {
+	        forwarder.sendLocationRequest(homeAgent.get(fishId), fishId);
         }
 	}
 	private void locateFishLocally(String fishId){

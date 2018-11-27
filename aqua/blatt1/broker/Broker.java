@@ -47,6 +47,10 @@ public class Broker {
             {
                 this.deregister(message);
             }
+            else if ( message.getPayload() instanceof NameResolutionRequest)
+            {
+                this.nameResolution(message);
+            }
         }
 
         private void register(Message message)
@@ -82,6 +86,15 @@ public class Broker {
             }
             clientList.remove(clientList.indexOf(request.getId()));
             lock.writeLock().unlock();
+        }
+
+        private void nameResolution(Message message)
+        {
+            Serializable payload = message.getPayload();
+            NameResolutionRequest request = (NameResolutionRequest)payload;
+            lock.readLock().lock();
+            endpoint.send(message.getSender(),new NameResolutionResponse(clientList.getClient(clientList.indexOf(request.getTankId())),request.getRequestId()));
+            lock.readLock().unlock();
         }
 
     }
