@@ -12,10 +12,17 @@ public class ClientCollection<T> {
 	private class Client {
 		final String id;
 		final T client;
+		long timeStamp;
 
-		Client(String id, T client) {
+		Client(String id, T client, long timeStamp) {
 			this.id = id;
 			this.client = client;
+			this.timeStamp = timeStamp;
+		}
+
+		public void updateTimeStamp(){
+			this.timeStamp = System.currentTimeMillis();
+			System.out.println("client time updated");
 		}
 	}
 
@@ -26,7 +33,7 @@ public class ClientCollection<T> {
 	}
 
 	public ClientCollection<T> add(String id, T client) {
-		clients.add(new Client(id, client));
+		clients.add(new Client(id, client, System.currentTimeMillis()));
 		return this;
 	}
 
@@ -53,6 +60,14 @@ public class ClientCollection<T> {
 		return clients.get(index).client;
 	}
 
+	public long getTimeStamp(int index) {
+		return clients.get(index).timeStamp;
+	}
+
+	public String getID(int index) {
+		return clients.get(index).id;
+	}
+
 	public int size() {
 		return clients.size();
 	}
@@ -63,6 +78,16 @@ public class ClientCollection<T> {
 
 	public T getRightNeighorOf(int index) {
 		return index < clients.size() - 1 ? clients.get(index + 1).client : clients.get(0).client;
+	}
+
+	public boolean updateClient(T clientToSearchFor){
+		for(Client c:clients){
+			if(c.client.equals(clientToSearchFor)){
+				c.updateTimeStamp();
+				return true;
+			}
+		}
+		return false;
 	}
 
 }

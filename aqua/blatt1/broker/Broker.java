@@ -18,6 +18,7 @@ public class Broker {
     private ReadWriteLock lock = new ReentrantReadWriteLock();
     private Endpoint endpoint = new Endpoint(4711);
     private  volatile boolean stopRequest = false;
+    private final int leaseTime = 10000;
 
     private class StopRequest extends Thread{
         @Override
@@ -34,6 +35,7 @@ public class Broker {
 
         public BrokerTask (Message message){
             this.message = message;
+
         }
 
         @Override
@@ -58,19 +60,25 @@ public class Broker {
             lock.readLock().lock();
             String id = "client" + clientList.size();
             lock.readLock().unlock();
-            if(clientList.size() == 0){
-                endpoint.send(message.getSender(),new NeighborUpdate(message.getSender(),message.getSender()));
-                endpoint.send(message.getSender(),new Token());
-            } else {
-                clientList.size();
-                endpoint.send(message.getSender(),new NeighborUpdate(clientList.getClient(0),clientList.getClient(clientList.size() - 1)));
-                endpoint.send(clientList.getClient(clientList.size() - 1),new NeighborUpdate(message.getSender(),null));
-                endpoint.send(clientList.getClient(0),new NeighborUpdate(null,message.getSender()));
-            }
             lock.writeLock().lock();
-            clientList.add(id,message.getSender());
+            boolean clientIsUpToDate = clientList.updateClient(message.getSender());
             lock.writeLock().unlock();
-            endpoint.send(message.getSender(),new RegisterResponse(id));
+            if(!clientIsUpToDate){
+                if (clientList.size() == 0) {
+                    endpoint.send(message.getSender(), new NeighborUpdate(message.getSender(), message.getSender()));
+                    endpoint.send(message.getSender(), new Token());
+                } else {
+                    clientList.size();
+                    endpoint.send(message.getSender(), new NeighborUpdate(clientList.getClient(0), clientList.getClient(clientList.size() - 1)));
+                    endpoint.send(clientList.getClient(clientList.size() - 1), new NeighborUpdate(message.getSender(), null));
+                    endpoint.send(clientList.getClient(0), new NeighborUpdate(null, message.getSender()));
+                }
+                lock.writeLock().lock();
+                clientList.add(id, message.getSender());
+                lock.writeLock().unlock();
+                endpoint.send(message.getSender(), new RegisterResponse(id, leaseTime));
+            }
+
         }
 
         private void deregister(Message message)
@@ -104,6 +112,31 @@ public class Broker {
        StopRequest sr = new StopRequest();
        sr.start();
        ExecutorService executor = Executors.newFixedThreadPool(5);
+
+       new java.util.Timer().schedule(
+               new java.util.TimerTask() {
+                   @Override
+                   public void run() {
+                       System.out.println("start cleanup...");
+                       lock.writeLock().lock();
+                       long currentTime = System.currentTimeMillis();
+                       for(int i = 0 ; i<clientList.size(); i++){
+                           long clientTimeStamp = clientList.getTimeStamp(i);
+                           if((currentTime - clientTimeStamp) > 10000 ){
+                               System.out.println("clean: " + clientList.getID(i));
+                               if(clientList.size() == 2){
+                                   endpoint.send(clientList.getClient(0),new NeighborUpdate(clientList.getClient(0),clientList.getClient(0)));
+                               } else if (clientList.size() > 2) {
+                                   endpoint.send(clientList.getLeftNeighorOf(clientList.indexOf(clientList.getID(i))),new NeighborUpdate(clientList.getRightNeighorOf(clientList.indexOf(clientList.getID(i))),null));
+                                   endpoint.send(clientList.getRightNeighorOf(clientList.indexOf(clientList.getID(i))),new NeighborUpdate(null,clientList.getLeftNeighorOf(clientList.indexOf(clientList.getID(i)))));
+                               }
+                               clientList.remove(clientList.indexOf(clientList.getID(i)));
+                           }
+                       }
+                       lock.writeLock().unlock();
+                   }
+               }, 0, 2000);
+
        while(!stopRequest)
        {
            Message message =  endpoint.blockingReceive();

@@ -9,8 +9,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import aqua.blatt1.common.Direction;
 import aqua.blatt1.common.FishModel;
 import aqua.blatt1.common.msgtypes.SnapshotToken;
-import com.sun.org.apache.regexp.internal.RE;
-import messaging.Message;
 
 enum RecordMode{
 	IDLE, LEFT, RIGHT,BOTH, WAITFORSNAPSHOTTOKEN;

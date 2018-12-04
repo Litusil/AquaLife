@@ -70,9 +70,20 @@ public class ClientCommunicator {
 			while (!isInterrupted()) {
 				Message msg = endpoint.blockingReceive();
 
-				if (msg.getPayload() instanceof RegisterResponse)
+				if (msg.getPayload() instanceof RegisterResponse) {
 					tankModel.onRegistration(((RegisterResponse) msg.getPayload()).getId());
+					int leaseTime = ((RegisterResponse)msg.getPayload()).getLeaseTime();
+					new java.util.Timer().schedule(
+							new java.util.TimerTask() {
+								@Override
+								public void run() {
+									System.out.println("update leaseTime: " + tankModel.id);
+									tankModel.forwarder.register();
+								}
+							},0, leaseTime-1000);
 
+
+				}
 				if (msg.getPayload() instanceof HandoffRequest)
 					tankModel.receiveFish(((HandoffRequest) msg.getPayload()).getFish());
 				if (msg.getPayload() instanceof NeighborUpdate){
