@@ -1,5 +1,6 @@
 package aqua.blatt1.broker;
 
+import aqua.blatt1.common.SecureEndpoint;
 import aqua.blatt1.common.msgtypes.*;
 import messaging.Endpoint;
 import messaging.Message;
@@ -16,7 +17,7 @@ public class Broker {
 
     private ClientCollection<InetSocketAddress> clientList  = new ClientCollection<>();
     private ReadWriteLock lock = new ReentrantReadWriteLock();
-    private Endpoint endpoint = new Endpoint(4711);
+    private SecureEndpoint endpoint = new SecureEndpoint(4711);
     private  volatile boolean stopRequest = false;
     private final int leaseTime = 10000;
 
